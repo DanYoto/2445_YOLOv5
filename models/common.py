@@ -351,7 +351,7 @@ class Spatial_Attention(nn.Module):
 
         ### reduction channel
         S1=U.mean(-1).mean(-1)        # bs,c      # 3 in F1. This is basically the global average pooling part
-        S2=U.mean(1)     # bs x h x w  # Instead of only having channel relation also have spatial relation
+        S2=U.mean(1).view(bs, 1, h, w)     # bs x 1 x h x w  # Instead of only having channel relation also have spatial relation
         S2=self.conv2(S2)   # Increase the spatial information
         S2=S2.mean(-1).mean(-1) #bs,c 
 
