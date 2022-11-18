@@ -327,6 +327,9 @@ class Spatial_Attention(nn.Module):
                 ]))
             )
         self.fc1 = nn.Linear(channel, self.d)
+        self.conv2 = nn.Conv2d(1, channel, kernel_size=3, padding=1, groups=group)
+        self.fc2 = nn.Linear(channel,self.d)
+
         self.fcs=nn.ModuleList([])
         for i in range(len(kernels)):
             self.fcs.append(nn.Linear(self.d, channel))
@@ -348,9 +351,10 @@ class Spatial_Attention(nn.Module):
 
         ### reduction channel
         S1=U.mean(-1).mean(-1)        # bs,c      # 3 in F1. This is basically the global average pooling part
-        S2=nn.Flatten(U.mean(1))      # bs x (h*w)  # Instead of only having channel relation also have spatial relation
+        S2=U.mean(1)     # bs x h x w  # Instead of only having channel relation also have spatial relation
+        S2=self.conv2(S2)   # Increase the spatial information
+        S2=S2.mean(-1).mean(-1) #bs,c 
 
-        self.fc2 = nn.Linear(h*w, self.d)
         Z1 = self.fc1(S1) #bs,d               # 4 in F1. FC layer with BN and ReLU.
         Z2 = self.fc2(S2) #bs,d
 
