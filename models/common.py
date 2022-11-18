@@ -327,12 +327,14 @@ class SKAttention(nn.Module):
                     ('relu', nn.ReLU())                
                 ]))
             )
+        """
         self.fc = nn.Sequential(OrderedDict([
-                    ('conv', nn.Linear(channel, self.d)),
-                    ('bn', nn.BatchNorm2d(self.d)),
+                    ('fc', nn.Linear(channel, self.d)),
+                    ('bn', nn.BatchNorm1d(self.d)),
                     ('relu', nn.ReLU())                
                 ]))
-
+        """
+        self.fc = nn.Linear(channel, self.d)
         self.fcs=nn.ModuleList([])
         for i in range(len(kernels)):
             self.fcs.append(nn.Linear(self.d, channel))
