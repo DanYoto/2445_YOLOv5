@@ -313,6 +313,61 @@ class Concat(nn.Module):
         return torch.cat(x, self.d)
 
 
+class Spatial_Attention(nn.Module):
+    def __init__(self, channel=512, kernels=[1,3,5,7], reduction=16,group=1,L=32):
+        super().__init__()
+        self.d = max(L, channel//reduction)
+        self.convs=nn.ModuleList([])
+        for k in kernels:
+            self.convs.append(
+                nn.Sequential(OrderedDict([
+                    ('conv', nn.Conv2d(channel, channel, kernel_size=k, padding=k//2, groups=group)),  # Input H,W = Output H,W
+                    ('bn', nn.BatchNorm2d(channel)),
+                    ('relu', nn.ReLU())                
+                ]))
+            )
+        self.fc1 = nn.Linear(channel, self.d)
+        self.fcs=nn.ModuleList([])
+        for i in range(len(kernels)):
+            self.fcs.append(nn.Linear(self.d, channel))
+        self.softmax = nn.Softmax(dim=0)
+
+    def forward(self, x):
+        bs, c, h, w = x.size()  
+        conv_outs = []
+
+        ### split
+        for conv in self.convs:
+            conv_outs.append(conv(x))   # 1 in F1
+        feats = torch.stack(conv_outs, 0) #k,bs,channel,h,w
+        # The above concatenates the outputs from the different kernels. Observe from line 325 we have that input size = output size (even channels).
+        # So we get a tensor of shape k,bs,c,h,w. This is not given in F1. So maybe take away? (Need to read the paper first tho)
+
+        ### fuse
+        U=sum(conv_outs) #bs,c,h,w        # 2 in F1
+
+        ### reduction channel
+        S1=U.mean(-1).mean(-1)        # bs,c      # 3 in F1. This is basically the global average pooling part
+        S2=nn.Flatten(U.mean(1))      # bs x (h*w)  # Instead of only having channel relation also have spatial relation
+
+        self.fc2 = nn.Linear(h*w, self.d)
+        Z1 = self.fc1(S1) #bs,d               # 4 in F1. FC layer with BN and ReLU.
+        Z2 = self.fc2(S2) #bs,d
+
+        Z = sum(Z1, Z2)  # Combine spatial and channel information by adding them
+
+        ### calculate attention weight. This are the weights in eq 5 in Selective Kernel Convolution paper.
+        weights = []
+        for fc in self.fcs:
+            weight = fc(Z)
+            weights.append(weight.view(bs,c,1,1)) #bs,channel
+        attention_weights = torch.stack(weights,0) # k,bs,channel,1,1
+        attention_weights = self.softmax(attention_weights) #k,bs,channel,1,1
+
+        ### fuse
+        V=(attention_weights*feats).sum(0)   # 6 in F1
+        return V
+
 class SKAttention(nn.Module):
     #Figure 1. Selective Kernel Convolution. Here from refered as F1
     def __init__(self, channel=512, kernels=[1,3,5,7], reduction=16,group=1,L=32):
