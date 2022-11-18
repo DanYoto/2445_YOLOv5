@@ -337,10 +337,10 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
             if m is Segment:
                 args[3] = make_divisible(args[3] * gw, 8)
         elif m in SKAttention:
-            c1, c2 = ch[f], args[0]
+            c1, c2 = ch[f], args[0]  # c1=-1, c2 = 1024
             if c2 != no:
-                c2 = make_divisible(c2 * gw, 8)
-            args[c1, *args[1:]]
+                c2 = make_divisible(c2 * gw, 8)  # c2 = 512 (for small.yaml)
+            args[c1]
         elif m is Contract:
             c2 = ch[f] * args[0] ** 2
         elif m is Expand:
