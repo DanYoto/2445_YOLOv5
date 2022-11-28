@@ -186,7 +186,7 @@ class DetectionModel(BaseModel):
         if anchors:
             LOGGER.info(f'Overriding model.yaml anchors with anchors={anchors}')
             self.yaml['anchors'] = round(anchors)  # override yaml value
-        self.model, self.save = parse_model(deepcopy(self.yaml), ch=[ch], pt)  # model, savelist
+        self.model, self.save = parse_model(deepcopy(self.yaml), ch=[ch], pt=pt)  # model, savelist
         self.names = [str(i) for i in range(self.yaml['nc'])]  # default names
         self.inplace = self.yaml.get('inplace', True)
 
@@ -329,7 +329,8 @@ def parse_model(d, ch, pt):  # model_dict, input_channels(3)
                 BottleneckCSP, C3, C3TR, C3SPP, C3Ghost, nn.ConvTranspose2d, DWConvTranspose2d, C3x}:
             c1, c2 = ch[f], args[0]
             if c2 != no:  # if not output
-                c2 = make_divisible(c2 * gw, 8)
+                if c2 != 3:  # I needed to add this so the output can be 3 dimensional
+                    c2 = make_divisible(c2 * gw, 8)  
 
             args = [c1, c2, *args[1:]]
             if m in {BottleneckCSP, C3, C3TR, C3Ghost, C3x}:
