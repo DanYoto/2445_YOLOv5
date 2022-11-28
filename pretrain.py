@@ -164,7 +164,7 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
     ema = ModelEMA(model) if RANK in {-1, 0} else None
 
     # Resume
-    best_fitness, start_epoch = 0.0, 0
+    best_fitness, start_epoch = np.inf, 0
     if pretrained:
         if resume:
             best_fitness, start_epoch, epochs = smart_resume(ckpt, optimizer, ema, weights, epochs, resume)
@@ -304,7 +304,8 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
             # Forward
             with torch.cuda.amp.autocast(amp):
                 pred = model(imgs)  # forward
-                loss, loss_items = compute_loss(pred, targets.to(device))  # loss scaled by batch_size
+                loss = torch.mean(torch.square(pred-imgs))
+                #loss, loss_items = compute_loss(pred, targets.to(device))  # loss scaled by batch_size
                 if RANK != -1:
                     loss *= WORLD_SIZE  # gradient averaged between devices in DDP mode
                 if opt.quad:
@@ -326,13 +327,13 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
 
             # Log
             if RANK in {-1, 0}:
-                mloss = (mloss * i + loss_items) / (i + 1)  # update mean losses
+                #mloss = (mloss * i + loss_items) / (i + 1)  # update mean losses
                 mem = f'{torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0:.3g}G'  # (GB)
-                pbar.set_description(('%11s' * 2 + '%11.4g' * 5) %
-                                     (f'{epoch}/{epochs - 1}', mem, *mloss, targets.shape[0], imgs.shape[-1]))
-                callbacks.run('on_train_batch_end', model, ni, imgs, targets, paths, list(mloss))
-                if callbacks.stop_training:
-                    return
+                pbar.set_description(('%11s' * 2 + '%11.4g' * 3) %
+                                     (f'{epoch}/{epochs - 1}', mem, loss, targets.shape[0], imgs.shape[-1]))
+                #callbacks.run('on_train_batch_end', model, ni, imgs, targets, paths, list(loss))
+                #if callbacks.stop_training:
+                #    return
             # end batch ------------------------------------------------------------------------------------------------
 
         # Scheduler
@@ -344,6 +345,7 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
             callbacks.run('on_train_epoch_end', epoch=epoch)
             ema.update_attr(model, include=['yaml', 'nc', 'hyp', 'names', 'stride', 'class_weights'])
             final_epoch = (epoch + 1 == epochs) or stopper.possible_stop
+            """ # We dont need mAP on pretraining
             if not noval or final_epoch:  # Calculate mAP
                 results, maps, _ = validate.run(data_dict,
                                                 batch_size=batch_size // WORLD_SIZE * 2,
@@ -356,14 +358,19 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
                                                 plots=False,
                                                 callbacks=callbacks,
                                                 compute_loss=compute_loss)
-
+            """
             # Update best mAP
-            fi = fitness(np.array(results).reshape(1, -1))  # weighted combination of [P, R, mAP@.5, mAP@.5-.95]
-            stop = stopper(epoch=epoch, fitness=fi)  # early stop check
-            if fi > best_fitness:
+            fi = loss  # weighted combination of [P, R, mAP@.5, mAP@.5-.95]
+            #stop = stopper(epoch=epoch, fitness=fi)  # early stop check
+            if fi < best_fitness:
                 best_fitness = fi
-            log_vals = list(mloss) + list(results) + lr
-            callbacks.run('on_fit_epoch_end', log_vals, epoch, best_fitness, fi)
+            #log_vals = list(loss) + list(results) + lr
+            #callbacks.run('on_fit_epoch_end', log_vals, epoch, best_fitness, fi)
+
+            print('HEBELE HÜBELE')
+            print(deepcopy(de_parallel(model)).half())
+            vndfjnbdfjk
+            # BURADA KALDIN BURADA ILK BIR KAÇ LAYER'I SAVELE! BUNDAN SONRA BITMIŞ OLACAK
 
             # Save model
             if (not nosave) or (final_epoch and not evolve):  # if save
@@ -397,6 +404,7 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
 
         # end epoch ----------------------------------------------------------------------------------------------------
     # end training -----------------------------------------------------------------------------------------------------
+    """
     if RANK in {-1, 0}:
         LOGGER.info(f'\n{epoch - start_epoch + 1} epochs completed in {(time.time() - t0) / 3600:.3f} hours.')
         for f in last, best:
@@ -420,11 +428,11 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
                         compute_loss=compute_loss)  # val best model with plots
                     if is_coco:
                         callbacks.run('on_fit_epoch_end', list(mloss) + list(results) + lr, epoch, best_fitness, fi)
-
+    
         callbacks.run('on_train_end', last, best, epoch, results)
-
+    """
     torch.cuda.empty_cache()
-    return results
+    return
 
 
 def parse_opt(known=False):
