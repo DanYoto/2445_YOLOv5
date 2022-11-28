@@ -234,7 +234,6 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
     model.class_weights = labels_to_class_weights(dataset.labels, nc).to(device) * nc  # attach class weights
     model.names = names
     """
-
     # Start training
     t0 = time.time()
     nb = len(train_loader)  # number of batches
@@ -366,12 +365,7 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
                 best_fitness = fi
             #log_vals = list(loss) + list(results) + lr
             #callbacks.run('on_fit_epoch_end', log_vals, epoch, best_fitness, fi)
-
-            print('HEBELE HÜBELE')
-            print(deepcopy(de_parallel(model)).half())
-            vndfjnbdfjk
-            # BURADA KALDIN BURADA ILK BIR KAÇ LAYER'I SAVELE! BUNDAN SONRA BITMIŞ OLACAK
-
+            
             # Save model
             if (not nosave) or (final_epoch and not evolve):  # if save
                 ckpt = {
