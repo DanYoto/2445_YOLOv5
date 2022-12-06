@@ -33,6 +33,9 @@ import yaml
 from torch.optim import lr_scheduler
 from tqdm import tqdm
 
+from mask_loss import random_masking
+from mask_loss import mask_loss
+
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
 if str(ROOT) not in sys.path:
@@ -278,8 +281,9 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
         for i, (imgs, targets, paths, _) in pbar:  # batch -------------------------------------------------------------
             callbacks.run('on_train_batch_start')
             ni = i + nb * epoch  # number integrated batches (since train start)
-            imgs = imgs.to(device, non_blocking=True).float() / 255  # uint8 to float32, 0-255 to 0.0-1.0
+            no_masked_imgs = imgs.to(device, non_blocking=True).float() / 255  # uint8 to float32, 0-255 to 0.0-1.0
             # NEW: Here should probably the masking be added on imgs
+            imgs, batch_mask = random_masking(no_masked_imgs, patch_size=16, mask_ratio=0.75)
 
             # Warmup
             if ni <= nw:
@@ -303,7 +307,7 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
             # Forward
             with torch.cuda.amp.autocast(amp):
                 pred = model(imgs)  # forward
-                loss = torch.mean(torch.square(pred-imgs))
+                loss, _ = mask_loss(no_masked_imgs, pred, batch_mask)   # NEW: new loss function. Only masked parts
                 #loss, loss_items = compute_loss(pred, targets.to(device))  # loss scaled by batch_size
                 if RANK != -1:
                     loss *= WORLD_SIZE  # gradient averaged between devices in DDP mode
