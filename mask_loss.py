@@ -8,7 +8,7 @@ def random_masking(imgs, patch_size = 16, mask_ratio = 0.75):
     h_patch = h // patch_size   # number of patches in heights
     w_patch = w // patch_size   # number of patches in width
     
-    masked = torch.zeros(bs, h_patch * w_patch)   
+    masked = torch.zeros(bs, h_patch * w_patch, device = imgs.device)   
     nr_zeros = h_patch * w_patch 
     for i in range(bs):  
         # Create an unique mask for each image in the batch to increase the learning
