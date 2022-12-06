@@ -284,7 +284,12 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
             no_masked_imgs = imgs.to(device, non_blocking=True).float() / 255  # uint8 to float32, 0-255 to 0.0-1.0
             # NEW: Here should probably the masking be added on imgs
             imgs, batch_mask = random_masking(no_masked_imgs, patch_size=16, mask_ratio=0.75)
-
+            """ # if the masked images want to be seen
+            import matplotlib.pyplot as plt
+            show_img = imgs[0].permute(1, 2, 0).cpu().numpy()
+            plt.imshow(show_img)
+            plt.savefig('masked_img.png')
+            """
             # Warmup
             if ni <= nw:
                 xi = [0, nw]  # x interp
