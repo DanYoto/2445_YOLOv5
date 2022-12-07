@@ -39,7 +39,11 @@ def mask_loss(imgs, preds, masks):
     preds --> predictions of shape bs, c, h, w
     masks --> masks of shape bs, c, h, w --> 1 means keep and 0 means discard
     (add something more if you want)
-    
+    """
+    mse_all_loss = (imgs - pred)**2
+    removed_patch_loss = (mse_all_loss * masks).sum() / masks.sum()
+    simple_loss = torch.mean(mse_all_loss)
+    """
     outputs:
     removed_patch_loss --> the loss between only the masked parts
     simple_loss --> the loss between all the pixels
@@ -47,7 +51,7 @@ def mask_loss(imgs, preds, masks):
     """
 
 
-    return #removed_patch_loss, simple_loss
+    return removed_patch_loss, simple_loss
 
 
 
