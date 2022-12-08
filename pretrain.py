@@ -33,9 +33,9 @@ import yaml
 from torch.optim import lr_scheduler
 from tqdm import tqdm
 
-from mask_loss import random_masking
-from mask_loss import forward_loss
-from mask_loss import show_images
+from util_pretrain import random_masking
+from util_pretrain import forward_loss
+from util_pretrain import show_images
 
 
 FILE = Path(__file__).resolve()
@@ -305,6 +305,10 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
             # Forward
             with torch.cuda.amp.autocast(amp):
                 pred = model(imgs)  # forward
+                max_pred = torch.max(pred, dim=0, keepdim=True)   # biggest value in each image in batch
+                min_pred = torch.max(pred, dim=0, keepdim=True)   # smallest ---------"----------------         
+                pred = (pred - min_pred)*(max_pred-min_pred) # normalize pred
+                
                 loss, _ = forward_loss(org_imgs, pred, batch_mask)   # loss only on the masked parts shown to be better on MAE papper
                 if RANK != -1:
                     loss *= WORLD_SIZE  # gradient averaged between devices in DDP mode
@@ -479,8 +483,8 @@ def parse_opt(known=False):
     parser.add_argument('--artifact_alias', type=str, default='latest', help='Version of dataset artifact to use')
 
     # Pretrain arguments
-    parser.add_argument('--patch_size', default=16, help='The patch size')
-    parser.add_argument('--mask_ratio', default=0.75, help='Ratio of the input image to be masked')
+    parser.add_argument('--patch_size', type=int, default=16, help='The patch size')
+    parser.add_argument('--mask_ratio', type=float, default=0.75, help='Ratio of the input image to be masked')
     parser.add_argument('--show_reconstructed', default=True, help='Whether to show the reconstructed images or not.')
 
     return parser.parse_known_args()[0] if known else parser.parse_args()
