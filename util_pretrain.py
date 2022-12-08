@@ -57,11 +57,14 @@ def forward_loss(imgs, preds, masks):
 def show_images(non_masked, masked, pred, sample, epoch):
     non_masked_np = non_masked[sample].permute(1, 2, 0).cpu().numpy()
     masked_np = masked[sample].permute(1, 2, 0).cpu().numpy()
-    pred_np = pred[sample].permute(1, 2, 0).cpu().numpy()
+    
+    pred_detached = pred.detach()
+    pred_np = pred_detached[sample].permute(1, 2, 0).cpu().numpy()
+    
     plt.imshow(non_masked_np)
     plt.savefig('original_img' + '_' + str(sample) + '_ep' + str(epoch) + '.png')
 
-    plt.imshow(masked)
+    plt.imshow(masked_np)
     plt.savefig('masked_img' + '_' + str(sample) + '_ep' + str(epoch) + '.png')
 
     plt.imshow(pred_np)

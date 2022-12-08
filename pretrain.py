@@ -305,21 +305,27 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
             # Forward
             with torch.cuda.amp.autocast(amp):
                 pred = model(imgs)  # forward
-                max_pred = torch.max(pred, dim=0, keepdim=True)   # biggest value in each image in batch
-                min_pred = torch.max(pred, dim=0, keepdim=True)   # smallest ---------"----------------         
-                pred = (pred - min_pred)*(max_pred-min_pred) # normalize pred
-                
+                """
+                #bs, c, h, w = pred.shape
+                max_pred = torch.amax(pred, dim=(1,2,3), keepdim=True)   # biggest value in each image in batch
+                #max_pred = max_pred.repeat((1, c, h, w))
+                min_pred = torch.amin(pred, dim=(1,2,3), keepdim=True)   # smallest ---------"----------------         
+                #min_pred = min_pred.repeat((1, c, h, w))
+                pred = (pred - min_pred)/(max_pred-min_pred) # normalize pred
+                #print(pred)
+                """
+
                 loss, _ = forward_loss(org_imgs, pred, batch_mask)   # loss only on the masked parts shown to be better on MAE papper
                 if RANK != -1:
                     loss *= WORLD_SIZE  # gradient averaged between devices in DDP mode
                 if opt.quad:
                     loss *= 4.
-
-            if opt.show_reconstructed and i==0 and epoch%5 == 0:  # show reconstruction on first batch every 5th epoch
-                samples = [5, 7, 13]
+            
+            if opt.show_reconstructed and i==0 and epoch%10 == 0:  # show reconstruction on first batch every 5th epoch
+                samples = [5, 13]
                 for sample in samples:
                     show_images(org_imgs, imgs, pred, sample, epoch)   # non-masked img, masked_img, predicted
-
+            
             # Backward
             scaler.scale(loss).backward()
 
