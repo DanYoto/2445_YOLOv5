@@ -34,7 +34,9 @@ from torch.optim import lr_scheduler
 from tqdm import tqdm
 
 from mask_loss import random_masking
-from mask_loss import mask_loss
+from mask_loss import forward_loss
+from mask_loss import show_images
+
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
@@ -258,18 +260,7 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
     for epoch in range(start_epoch, epochs):  # epoch ------------------------------------------------------------------
         callbacks.run('on_train_epoch_start')
         model.train()
-        """
-        # Update image weights (optional, single-GPU only)
-        if opt.image_weights:
-            cw = model.class_weights.cpu().numpy() * (1 - maps) ** 2 / nc  # class weights
-            iw = labels_to_image_weights(dataset.labels, nc=nc, class_weights=cw)  # image weights
-            dataset.indices = random.choices(range(dataset.n), weights=iw, k=dataset.n)  # rand weighted idx
-        """
-        # Update mosaic border (optional)
-        # b = int(random.uniform(0.25 * imgsz, 0.75 * imgsz + gs) // gs * gs)
-        # dataset.mosaic_border = [b - imgsz, -b]  # height, width borders
 
-        mloss = torch.zeros(3, device=device)  # mean losses
         if RANK != -1:
             train_loader.sampler.set_epoch(epoch)
         pbar = enumerate(train_loader)
@@ -281,10 +272,12 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
         for i, (imgs, targets, paths, _) in pbar:  # batch -------------------------------------------------------------
             callbacks.run('on_train_batch_start')
             ni = i + nb * epoch  # number integrated batches (since train start)
-            no_masked_imgs = imgs.to(device, non_blocking=True).float() / 255  # uint8 to float32, 0-255 to 0.0-1.0
-            # NEW: Here should probably the masking be added on imgs
-            imgs, batch_mask = random_masking(no_masked_imgs, patch_size=16, mask_ratio=0.75)
-            """ # if the masked images want to be seen
+            org_imgs = imgs.to(device, non_blocking=True).float() / 255  # uint8 to float32, 0-255 to 0.0-1.0
+            
+            # imgs: are the masked input images. org_imgs --> are the non-masked input images not used in pretraining
+            imgs, batch_mask = random_masking(org_imgs, patch_size= opt.patch_size, mask_ratio=opt.mask_ratio)
+            """ 
+            # if the masked images want to be seen
             import matplotlib.pyplot as plt
             show_img = imgs[0].permute(1, 2, 0).cpu().numpy()
             plt.imshow(show_img)
@@ -312,12 +305,16 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
             # Forward
             with torch.cuda.amp.autocast(amp):
                 pred = model(imgs)  # forward
-                loss, _ = mask_loss(no_masked_imgs, pred, batch_mask)   # NEW: new loss function. Only masked parts
-                #loss, loss_items = compute_loss(pred, targets.to(device))  # loss scaled by batch_size
+                loss, _ = forward_loss(org_imgs, pred, batch_mask)   # loss only on the masked parts shown to be better on MAE papper
                 if RANK != -1:
                     loss *= WORLD_SIZE  # gradient averaged between devices in DDP mode
                 if opt.quad:
                     loss *= 4.
+
+            if opt.show_reconstructed and i==0 and epoch%5 == 0:  # show reconstruction on first batch every 5th epoch
+                samples = [5, 7, 13]
+                for sample in samples:
+                    show_images(org_imgs, imgs, pred, sample, epoch)   # non-masked img, masked_img, predicted
 
             # Backward
             scaler.scale(loss).backward()
@@ -480,6 +477,11 @@ def parse_opt(known=False):
     parser.add_argument('--upload_dataset', nargs='?', const=True, default=False, help='Upload data, "val" option')
     parser.add_argument('--bbox_interval', type=int, default=-1, help='Set bounding-box image logging interval')
     parser.add_argument('--artifact_alias', type=str, default='latest', help='Version of dataset artifact to use')
+
+    # Pretrain arguments
+    parser.add_argument('--patch_size', default=16, help='The patch size')
+    parser.add_argument('--mask_ratio', default=0.75, help='Ratio of the input image to be masked')
+    parser.add_argument('--show_reconstructed', default=True, help='Whether to show the reconstructed images or not.')
 
     return parser.parse_known_args()[0] if known else parser.parse_args()
 

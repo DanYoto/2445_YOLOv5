@@ -1,4 +1,5 @@
 import torch
+import matplotlib.pyplot as plt
 
 def random_masking(imgs, patch_size = 16, mask_ratio = 0.75):
     # Take in a batch of images and mask it with 'patch_size' big patches to
@@ -32,27 +33,40 @@ def random_masking(imgs, patch_size = 16, mask_ratio = 0.75):
     masked_imgs = imgs * mask
     return masked_imgs, mask
 
-def mask_loss(imgs, preds, masks):
+def forward_loss(imgs, preds, masks):
     """
     inputs:
     imgs --> non-masked images of shape bs, c, h, w
     preds --> predictions of shape bs, c, h, w
     masks --> masks of shape bs, c, h, w --> 1 means keep and 0 means discard
     (add something more if you want)
-    """
-    mse_all_loss = (imgs - pred)**2
-    removed_patch_loss = (mse_all_loss * masks).sum() / masks.sum()
-    simple_loss = torch.mean(mse_all_loss)
-    """
+
     outputs:
     removed_patch_loss --> the loss between only the masked parts
     simple_loss --> the loss between all the pixels
     (add something more if you want)
     """
-
-
+    mse_all_loss = (imgs - preds)**2
+    inverse_masks = 1 - masks # 0 is keep (non-masked parts), 1 is discard (masked parts)
+    removed_patch_loss = (mse_all_loss * inverse_masks).sum() / inverse_masks.sum()
+    simple_loss = torch.mean(mse_all_loss)
     return removed_patch_loss, simple_loss
 
+
+
+def show_images(non_masked, masked, pred, sample, epoch):
+    non_masked_np = non_masked[sample].permute(1, 2, 0).cpu().numpy()
+    masked_np = masked[sample].permute(1, 2, 0).cpu().numpy()
+    pred_np = pred[sample].permute(1, 2, 0).cpu().numpy()
+    plt.imshow(non_masked_np)
+    plt.savefig('original_img' + '_' + str(sample) + '_ep' + str(epoch) + '.png')
+
+    plt.imshow(masked)
+    plt.savefig('masked_img' + '_' + str(sample) + '_ep' + str(epoch) + '.png')
+
+    plt.imshow(pred_np)
+    plt.savefig('predicted_img' + '_' + str(sample) + '_ep' + str(epoch) + '.png')
+    return
 
 
 
