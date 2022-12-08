@@ -49,27 +49,27 @@ head:
 
 # YOLOv5 v6.0 decoder
 decoder:
-  [[17, 1, Conv, [256, 1, 1]],                  #80x80x256      24
-   [-1, 1, nn.Upsample, [None, 2, 'nearest']],  #160x160x256    25
-   [-1, 1, Conv, [64, 1, 1]],                   #160x160x64     26
+  [[17, 1, Conv, [256, 3, 1, 1]],                  #80x80x256     24
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],     #160x160x256   25
+   [-1, 1, Conv, [64, 3, 1, 1]],                   #160x160x64    26
 
-   [20, 1, nn.Upsample, [None, 2, 'nearest']],  #80x80x512     27
-   [-1, 1, Conv, [256, 1, 1]],                  #80x80x256     28
-   [-1, 1, nn.Upsample, [None, 2, 'nearest']],  #160x160x256   29
-   [-1, 1, Conv, [64, 1, 1]],                   #160x160x64    30 
+   [20, 1, nn.Upsample, [None, 2, 'nearest']],     #80x80x512     27
+   [-1, 1, Conv, [256, 3, 1, 1]],                  #80x80x256     28
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],     #160x160x256   29
+   [-1, 1, Conv, [64, 3, 1, 1]],                   #160x160x64    30 
 
-   [23, 1, nn.Upsample, [None, 2, 'nearest']],  #40x40x1024    31
-   [-1, 1, Conv, [256, 1, 1]],                  #40x40x256     32
-   [-1, 1, nn.Upsample, [None, 2, 'nearest']],  #80x80x256     33
-   [-1, 1, Conv, [64, 1, 1]],                   #80x80x64      34
-   [-1, 1, nn.Upsample, [None, 2, 'nearest']],  #160x160x64    35
+   [23, 1, nn.Upsample, [None, 2, 'nearest']],     #40x40x1024    31
+   [-1, 1, Conv, [256, 3, 1, 1]],                  #40x40x256     32
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],     #80x80x256     33
+   [-1, 1, Conv, [64, 3, 1, 1]],                   #80x80x64      34
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],     #160x160x64    35
 
-   [[26, 30], 1, Concat, [1]],                  #160x160x128   36
-   [[-1, 35], 1, Concat, [1]],                  #160x160x192   37
-   [-1, 1, Conv, [16, 1, 1]],                   #160x160x16    38
-   [-1, 1, nn.Upsample, [None, 2, 'nearest']],  #320x320x16    39
-   [-1, 1, Conv, [8, 1, 1]],                    #320x320x8     40
-   [-1, 1, nn.Upsample, [None, 2, 'nearest']],  #640x640x8     41
-   [-1, 1, Conv, [3, 1, 1]],                    #640x640x3     42
+   [[26, 30], 1, Concat, [1]],                     #160x160x128   36
+   [[-1, 35], 1, Concat, [1]],                     #160x160x192   37
+   [-1, 1, Conv, [16, 3, 1, 1]],                   #160x160x16    38
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],     #320x320x16    39
+   [-1, 1, Conv, [8, 3, 1, 1]],                    #320x320x8     40
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],     #640x640x8     41
+   [-1, 1, ConvLast, [3, 3, 1, 1]],                #640x640x3     42
   ]
 
