@@ -1,7 +1,7 @@
 import torch
 import matplotlib.pyplot as plt
 
-def random_masking(imgs, patch_size = 16, mask_ratio = 0.75):
+def random_masking_for_loop(imgs, patch_size = 16, mask_ratio = 0.75):
     # Take in a batch of images and mask it with 'patch_size' big patches to
     # a ratio of 'mask_ratio'
     bs, c, h, w = imgs.shape
@@ -32,6 +32,39 @@ def random_masking(imgs, patch_size = 16, mask_ratio = 0.75):
     # multiply image with mask
     masked_imgs = imgs * mask
     return masked_imgs, mask
+
+def random_masking_vectorized(imgs, patch_size = 16, mask_ratio = 0.75):
+    "Takes in the images and randomly masks them. Then it returns masked imgs"
+    N, c, h, w = imgs.shape
+    h_patch = h//patch_size   
+    w_patch = w//patch_size   
+    L = h_patch * w_patch     # total number of patches
+    
+    len_keep = int(L * (1 - mask_ratio))  # number of patches to keep of the total
+
+    noise = torch.rand(N, L, device=imgs.device)  # noise in [0, 1]
+    ids_shuffle = torch.argsort(noise, dim=1)  # ascend: small is keep, large is remove
+    ids_restore = torch.argsort(ids_shuffle, dim=1)
+    
+    # generate the binary mask: 0 is keep, 1 is remove
+    mask = torch.zeros([N, L], device=imgs.device)
+    mask[:, :len_keep] = 1.
+    # unshuffle to get the binary mask
+    mask = torch.gather(mask, dim=1, index=ids_restore)   # [bs, (h_patch x w_patch)]
+
+    # resize mask
+    mask_3d = torch.reshape(mask, shape = (N, h_patch, w_patch))
+    
+    # add the color channels to mask tensor
+    mask_3d = mask_3d[:, None, :, :]
+    mask_colored = mask_3d.repeat(1, 3, 1, 1)
+
+    mask_colored_increased = torch.repeat_interleave(mask_colored, patch_size, dim=2)
+    batch_mask = torch.repeat_interleave(mask_colored_increased, patch_size, dim=3)
+
+    masked_imgs = imgs * batch_mask
+    return masked_imgs, batch_mask
+
 
 def forward_loss(imgs, preds, masks):
     """

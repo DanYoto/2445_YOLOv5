@@ -33,7 +33,7 @@ import yaml
 from torch.optim import lr_scheduler
 from tqdm import tqdm
 
-from util_pretrain import random_masking
+from util_pretrain import random_masking_vectorized
 from util_pretrain import forward_loss
 from util_pretrain import show_images
 
@@ -275,7 +275,7 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
             org_imgs = imgs.to(device, non_blocking=True).float() / 255  # uint8 to float32, 0-255 to 0.0-1.0
             
             # imgs: are the masked input images. org_imgs --> are the non-masked input images not used in pretraining
-            imgs, batch_mask = random_masking(org_imgs, patch_size= opt.patch_size, mask_ratio=opt.mask_ratio)
+            imgs, batch_mask = random_masking_vectorized(org_imgs, patch_size= opt.patch_size, mask_ratio=opt.mask_ratio)
             """ 
             # if the masked images want to be seen
             import matplotlib.pyplot as plt
